@@ -61,15 +61,6 @@
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="OpenSource.Data.HashFunction.Core">
-      <HintPath>..\Data.HashFunction\src\OpenSource.Data.HashFunction.xxHash\bin\Release\net45\OpenSource.Data.HashFunction.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenSource.Data.HashFunction.Interfaces">
-      <HintPath>..\Data.HashFunction\src\OpenSource.Data.HashFunction.xxHash\bin\Release\net45\OpenSource.Data.HashFunction.Interfaces.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenSource.Data.HashFunction.xxHash">
-      <HintPath>..\Data.HashFunction\src\OpenSource.Data.HashFunction.xxHash\bin\Release\net45\OpenSource.Data.HashFunction.xxHash.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="SQLDataHashFunctions.cs" />
