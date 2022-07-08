@@ -14,25 +14,25 @@ namespace SQLDataHashFunctions
         static readonly ulong offset64 = 0xcbf29ce484222325;
         static readonly uint prime32 = 16777619;
         static readonly uint offset32 = 2166136261;
+
+
+
+
         [SqlFunction(IsDeterministic = true, IsPrecise = true, DataAccess = DataAccessKind.None)]
-        public static SqlInt64 XF_HashFnv1a_64(SqlString value)
-        {
-            return (SqlInt64)HashFNV1a_64((string)value);
-        }
+        public static SqlInt64 XF_HashFnv1a_64(SqlString value) => HashFNV1a_64(value);
+   
         [SqlFunction(IsDeterministic = true, IsPrecise = true, DataAccess = DataAccessKind.None)]
-        public static SqlInt32 XF_HashFnv1a_32(SqlString value)
-        {
-            return (SqlInt32)HashFNV1a_32((string)value);
-        }
-        [SqlFunction(IsDeterministic = true, IsPrecise = true, DataAccess = DataAccessKind.None)]
-        public static SqlInt16 XF_HashFnv1a_16(SqlString value)
-        {
-            return (SqlInt16)HashFNV1a_16((string)value);
-        }
-        private static long HashFNV1a_64(string value)
+        public static SqlInt32 XF_HashFnv1a_32(SqlString value) => HashFNV1a_32(value);
+
+		[SqlFunction(IsDeterministic = true, IsPrecise = true, DataAccess = DataAccessKind.None)]
+		public static SqlInt16 XF_HashFnv1a_16(SqlString value) => HashFNV1a_16(value);
+
+
+		private static long HashFNV1a_64(SqlString value)
         {
             ulong hash = offset64;
-            byte[] bytes = Encoding.UTF8.GetBytes(value.ToString());
+            //byte[] bytes = Encoding.UTF8.GetBytes(value.ToString());
+            byte[] bytes = value.GetUnicodeBytes();
             for (int i = 0; i < bytes.Length; i++)
             {
                 ulong v = (hash ^ bytes[i]);
@@ -41,10 +41,10 @@ namespace SQLDataHashFunctions
             return (long)(hash - long.MaxValue);
         }
 
-        private static int HashFNV1a_32(string value)
+        private static int HashFNV1a_32(SqlString value)
         {
             uint hash = offset32;
-            byte[] bytes = Encoding.UTF8.GetBytes(value.ToString());
+            byte[] bytes = value.GetUnicodeBytes();
             for (int i = 0; i < bytes.Length; i++)
             {
                 uint v = (hash ^ bytes[i]);
@@ -52,11 +52,11 @@ namespace SQLDataHashFunctions
             }
             return (int)(hash - int.MaxValue);
         }
-        private static short HashFNV1a_16(string value)
+        private static short HashFNV1a_16(SqlString value)
         {
             uint MASK_16 = (((uint)1 << 16) - 1);    /* i.e., (u_int32_t)0xffff */
             uint hash = offset32;
-            byte[] bytes = Encoding.UTF8.GetBytes(value.ToString());
+            byte[] bytes = value.GetUnicodeBytes();
             for (int i = 0; i < bytes.Length; i++)
             {
                 uint v = (hash ^ bytes[i]);
@@ -118,10 +118,18 @@ namespace SQLDataHashFunctions
 
         [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true
           , IsPrecise = false, DataAccess = DataAccessKind.None)]
-        public static SqlInt32 MurmurHash2(SqlBinary data)
+        public static SqlInt32 XF_HashMurmur2_32(SqlString strdata)
         {
+            
+            if (strdata.IsNull)
+            {
+                return SqlInt32.Null;
+            }
             const UInt32 m = 0x5bd1e995;
             const Int32 r = 24;
+
+            byte[] data = strdata.GetUnicodeBytes();
+
 
             Int32 length = (Int32)data.Length;
             if (length == 0)
@@ -145,14 +153,12 @@ namespace SQLDataHashFunctions
             switch (length)
             {
                 case 3:
-                    h ^= (UInt16)(data[currentIndex++]
-                      | data[currentIndex++] << 8);
+                    h ^= (UInt16)(data[currentIndex++] | data[currentIndex++] << 8);
                     h ^= (UInt32)(data[currentIndex] << 16);
                     h *= m;
                     break;
                 case 2:
-                    h ^= (UInt16)(data[currentIndex++]
-                      | data[currentIndex] << 8);
+                    h ^= (UInt16)(data[currentIndex++] | data[currentIndex] << 8);
                     h *= m;
                     break;
                 case 1:
@@ -177,6 +183,73 @@ namespace SQLDataHashFunctions
             }
         }
 
+        [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true
+         , IsPrecise = false, DataAccess = DataAccessKind.None)]
+        public static SqlInt64 XF_HashMurmur2_64(SqlString strdata)
+        {
+
+            if (strdata.IsNull)
+            {
+                return SqlInt64.Null;
+            }
+            const UInt64 m = 0xcbf29ce484222325;
+            const Int32 r = 24;
+
+            byte[] data = strdata.GetUnicodeBytes();
+
+
+            Int64 length = (Int64)data.Length;
+            if (length == 0)
+                return 0;
+            UInt64 h = seed ^ (UInt64)length;
+            Int64 currentIndex = 0;
+            while (length >= 4)
+            {
+                UInt64 k = (UInt64)(data[currentIndex++]
+                  | data[currentIndex++] << 8
+                  | data[currentIndex++] << 16
+                  | data[currentIndex++] << 24);
+                k *= m;
+                k ^= k >> r;
+                k *= m;
+
+                h *= m;
+                h ^= k;
+                length -= 4;
+            }
+            switch (length)
+            {
+                case 3:
+                    h ^= (UInt16)(data[currentIndex++] | data[currentIndex++] << 8);
+                    h ^= (UInt32)(data[currentIndex] << 16);
+                    h *= m;
+                    break;
+                case 2:
+                    h ^= (UInt16)(data[currentIndex++] | data[currentIndex] << 8);
+                    h *= m;
+                    break;
+                case 1:
+                    h ^= data[currentIndex];
+                    h *= m;
+                    break;
+                default:
+                    break;
+            }
+
+            // Do a few final mixes of the hash to ensure the last few
+            // bytes are well-incorporated.
+
+            h ^= h >> 13;
+            h *= m;
+            h ^= h >> 15;
+
+            /* Interface back to SQL server */
+            unchecked
+            {
+                return (SqlInt64)(Int64)h;
+            }
+        }
+
         private static UInt32 rotl32(UInt32 x, byte r)
         {
             return (x << r) | (x >> (32 - r));
@@ -195,16 +268,21 @@ namespace SQLDataHashFunctions
 
         [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true
           , IsPrecise = true, DataAccess = DataAccessKind.None)]
-        public static SqlInt32 MurmurHash3(SqlBinary data)
+        public static SqlInt32 XF_HashMurmur3_32(SqlString strdata)
         {
             const UInt32 c1 = 0xcc9e2d51;
             const UInt32 c2 = 0x1b873593;
+            if (strdata.IsNull || strdata.ToString().Length == 0)
+            {
+                return SqlInt32.Null;
+			}
 
+            var data = strdata.GetUnicodeBytes();
 
             int curLength = data.Length;    /* Current position in byte array */
             int length = curLength;   /* the const length we need to fix tail */
             UInt32 h1 = seed;
-            UInt32 k1 = 0;
+            UInt32 k1 = 2; //0 initially
 
             /* body, eat stream a 32-bit int at a time */
             Int32 currentIndex = 0;
