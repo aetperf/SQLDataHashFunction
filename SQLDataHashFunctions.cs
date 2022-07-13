@@ -23,20 +23,20 @@ namespace SQLDataHashFunctions
 
 
         [SqlFunction(IsDeterministic = true, IsPrecise = true, DataAccess = DataAccessKind.None)]
-        public static SqlInt64 XF_HashFnv1a_64(SqlString value) => HashFNV1a_64(value);
+        public static SqlInt64 XF_HashFnv1a_64(SqlBinary value) => HashFNV1a_64(value);
 
         [SqlFunction(IsDeterministic = true, IsPrecise = true, DataAccess = DataAccessKind.None)]
-        public static SqlInt32 XF_HashFnv1a_32(SqlString value) => HashFNV1a_32(value);
+        public static SqlInt32 XF_HashFnv1a_32(SqlBinary value) => HashFNV1a_32(value);
 
         [SqlFunction(IsDeterministic = true, IsPrecise = true, DataAccess = DataAccessKind.None)]
-        public static SqlInt16 XF_HashFnv1a_16(SqlString value) => HashFNV1a_16(value);
+        public static SqlInt16 XF_HashFnv1a_16(SqlBinary value) => HashFNV1a_16(value);
 
 
-        private static long HashFNV1a_64(SqlString value)
+        private static long HashFNV1a_64(SqlBinary bytes)
         {
             ulong hash = offset64;
             //byte[] bytes = Encoding.UTF8.GetBytes(value.ToString());
-            byte[] bytes = value.GetUnicodeBytes();
+            //byte[] bytes = value.GetUnicodeBytes();
             for (int i = 0; i < bytes.Length; i++)
             {
                 ulong v = (hash ^ bytes[i]);
@@ -45,10 +45,10 @@ namespace SQLDataHashFunctions
             return (long)(hash - long.MaxValue);
         }
 
-        private static int HashFNV1a_32(SqlString value)
+        private static int HashFNV1a_32(SqlBinary bytes)
         {
             uint hash = offset32;
-            byte[] bytes = value.GetUnicodeBytes();
+            //byte[] bytes = value.GetUnicodeBytes();
             for (int i = 0; i < bytes.Length; i++)
             {
                 uint v = (hash ^ bytes[i]);
@@ -56,11 +56,11 @@ namespace SQLDataHashFunctions
             }
             return (int)(hash - int.MaxValue);
         }
-        private static short HashFNV1a_16(SqlString value)
+        private static short HashFNV1a_16(SqlBinary bytes)
         {
             uint MASK_16 = (((uint)1 << 16) - 1);    /* i.e., (u_int32_t)0xffff */
             uint hash = offset32;
-            byte[] bytes = value.GetUnicodeBytes();
+            //byte[] bytes = value.GetUnicodeBytes();
             for (int i = 0; i < bytes.Length; i++)
             {
                 uint v = (hash ^ bytes[i]);
@@ -149,17 +149,18 @@ namespace SQLDataHashFunctions
         public static SqlInt64 XF_HashMurmur2_64(SqlBinary data)
         {
 
-            if (data.ToString().Length==0)
-            {
-                return SqlInt64.Null;
-            }
+            //if (data.ToString().Length==0)
+            //{
+            //    return SqlInt64.Null;
+            //}
             const UInt64 m = 0xc6a4a7935bd1e995;
             const Int32 r = 47;          
 
 
             Int32 length = (Int32)data.Length;
             if (length == 0)
-                return 0;
+                return SqlInt64.Null;
+
             UInt64 h = seed ^ (UInt32)length;
             Int32 currentIndex = 0;
             while (length >= 4)
@@ -215,6 +216,11 @@ namespace SQLDataHashFunctions
             return (x << r) | (x >> (32 - r));
         }
 
+        private static UInt64 rotl32(UInt64 x, byte r)
+        {
+            return (x << r) | (x >> (64 - r));
+        }
+
         private static UInt32 fmix(UInt32 h)
         {
             h ^= h >> 16;
@@ -222,6 +228,16 @@ namespace SQLDataHashFunctions
             h ^= h >> 13;
             h *= 0xc2b2ae35;
             h ^= h >> 16;
+            return h;
+        }
+
+        private static UInt64 fmix(UInt64 h)
+        {
+            h ^= h >> 33;
+            h *= 0xff51afd7ed558ccdul;
+            h ^= h >> 33;
+            h *= 0xc4ceb9fe1a85ec53ul;
+            h ^= h >> 33;
             return h;
         }
 
@@ -239,7 +255,7 @@ namespace SQLDataHashFunctions
 
 
             int curLength = data.Length;    /* Current position in byte array */
-            int length = curLength;   /* the const length we need to fix tail */
+            int length = curLength;         /* the const length we need to fix tail */
             UInt32 h1 = seed;
             UInt32 k1 = 0;
 
@@ -309,10 +325,94 @@ namespace SQLDataHashFunctions
             }
         }
 
-    };
+
+        [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true
+         , IsPrecise = true, DataAccess = DataAccessKind.None)]
+        public static SqlInt64 XF_HashMurmur3_64(SqlBinary data)
+        {
+            const UInt64 c1 = 0x87c37b91114253d5ul;
+            const UInt64 c2 = 0x4cf5ad432745937ful;
+            if (data.ToString().Length == 0)
+            {
+                return SqlInt64.Null;
+            }
 
 
-    public static partial class xxHash3
+            int curLength = data.Length;    /* Current position in byte array */
+            int length = curLength;   /* the const length we need to fix tail */
+            UInt64 h1 = seed;
+            UInt64 k1 = 0;
+
+            /* body, eat stream a 32-bit int at a time */
+            Int32 currentIndex = 0;
+            while (curLength >= 4)
+            {
+                /* Get four bytes from the input into an UInt32 */
+                k1 = (UInt64)(data[currentIndex++]
+                  | data[currentIndex++] << 8
+                  | data[currentIndex++] << 16
+                  | data[currentIndex++] << 24);
+
+                /* bitmagic hash */
+                k1 *= c1;
+                k1 = rotl32(k1, 15);
+                k1 *= c2;
+
+                h1 ^= k1;
+                h1 = rotl32(h1, 13);
+                h1 = h1 * 5 + 0xe6546b64;
+                curLength -= 4;
+            }
+
+            /* tail, the reminder bytes that did not make it to a full int */
+            /* (this switch is slightly more ugly than the C++ implementation 
+             * because we can't fall through) */
+
+
+
+
+            switch (curLength)
+            {
+                case 3:
+                    k1 ^= (UInt64)(data[currentIndex++]
+                      | data[currentIndex++] << 8
+                      | data[currentIndex++] << 16);
+                    k1 *= c1;
+                    k1 = rotl32(k1, 15);
+                    k1 *= c2;
+                    h1 ^= k1;
+                    break;
+                case 2:
+                    k1 ^= (UInt64)(data[currentIndex++]
+                      | data[currentIndex++] << 8);
+                    k1 *= c1;
+                    k1 = rotl32(k1, 15);
+                    k1 *= c2;
+                    h1 ^= k1;
+                    break;
+                case 1:
+                    k1 ^= (UInt64)(data[currentIndex++]);
+                    k1 *= c1;
+                    k1 = rotl32(k1, 15);
+                    k1 *= c2;
+                    h1 ^= k1;
+                    break;
+            };
+
+            // finalization, magic chants to wrap it all up
+            h1 ^= (UInt64)length;
+            h1 = fmix(h1);
+
+            unchecked
+            {
+                return (SqlInt64)(Int64)h1;
+            }
+        }
+
+
+	}
+
+	public static partial class xxHash3
     {
       
     }
