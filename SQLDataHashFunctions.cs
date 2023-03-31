@@ -1,7 +1,4 @@
 using System;
-using System.Data;
-using System.Data.SqlClient;
-using System.Text;
 using System.Data.SqlTypes;
 using Microsoft.SqlServer.Server;
 
@@ -70,8 +67,6 @@ namespace SQLDataHashFunctions
             return (short)(hash - short.MaxValue);
         }
 
-
-
     };
 
     public partial class MURMUR
@@ -79,9 +74,26 @@ namespace SQLDataHashFunctions
 
         const UInt32 seed = 42; /* Define your own seed here */
 
-        [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true
-          , IsPrecise = false, DataAccess = DataAccessKind.None)]
-        public static SqlInt32 XF_HashMurmur2_32(SqlBinary data)
+
+
+        [SqlFunction(IsDeterministic = true, DataAccess = DataAccessKind.None)]
+        public static SqlInt16 XF_MurMurBucket(SqlBinary data, SqlInt16 numBuckets) => HashBucket_16(data, numBuckets);
+
+
+        [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true, IsPrecise = false, DataAccess = DataAccessKind.None)]
+        public static SqlInt32 XF_HashMurmur2_32(SqlBinary data) => HashMurmur2_32(data);
+
+        [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true, IsPrecise = false, DataAccess = DataAccessKind.None)]
+        public static SqlInt64 XF_HashMurmur2_64(SqlBinary data) => HashMurmur2_64(data);
+
+        [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true, IsPrecise = true, DataAccess = DataAccessKind.None)]
+        public static SqlInt32 XF_HashMurmur3_32(SqlBinary data) => HashMurmur3_32(data);
+
+        [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true, IsPrecise = true, DataAccess = DataAccessKind.None)]
+        public static SqlInt64 XF_HashMurmur3_64(SqlBinary data) => HashMurmur3_64(data);
+
+
+        private static SqlInt32 HashMurmur2_32(SqlBinary data)
         {
 
             if (data.ToString().Length == 0)
@@ -91,7 +103,7 @@ namespace SQLDataHashFunctions
             const UInt32 m = 0x5bd1e995;
             const Int32 r = 24;
 
-            
+
             Int32 length = (Int32)data.Length;
             if (length == 0)
                 return 0;
@@ -144,9 +156,7 @@ namespace SQLDataHashFunctions
             }
         }
 
-        [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true
-         , IsPrecise = false, DataAccess = DataAccessKind.None)]
-        public static SqlInt64 XF_HashMurmur2_64(SqlBinary data)
+        private static SqlInt64 HashMurmur2_64(SqlBinary data)
         {
 
             //if (data.ToString().Length==0)
@@ -154,7 +164,7 @@ namespace SQLDataHashFunctions
             //    return SqlInt64.Null;
             //}
             const UInt64 m = 0xc6a4a7935bd1e995;
-            const Int32 r = 47;          
+            const Int32 r = 47;
 
 
             Int32 length = (Int32)data.Length;
@@ -211,16 +221,19 @@ namespace SQLDataHashFunctions
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static UInt32 rotl32(UInt32 x, byte r)
         {
             return (x << r) | (x >> (32 - r));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static UInt64 rotl32(UInt64 x, byte r)
         {
             return (x << r) | (x >> (64 - r));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static UInt32 fmix(UInt32 h)
         {
             h ^= h >> 16;
@@ -231,6 +244,7 @@ namespace SQLDataHashFunctions
             return h;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static UInt64 fmix(UInt64 h)
         {
             h ^= h >> 33;
@@ -241,10 +255,7 @@ namespace SQLDataHashFunctions
             return h;
         }
 
-
-        [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true
-          , IsPrecise = true, DataAccess = DataAccessKind.None)]
-        public static SqlInt32 XF_HashMurmur3_32(SqlBinary data)
+        private static SqlInt32 HashMurmur3_32(SqlBinary data)
         {
             const UInt32 c1 = 0xcc9e2d51;
             const UInt32 c2 = 0x1b873593;
@@ -325,10 +336,7 @@ namespace SQLDataHashFunctions
             }
         }
 
-
-        [Microsoft.SqlServer.Server.SqlFunction(IsDeterministic = true
-         , IsPrecise = true, DataAccess = DataAccessKind.None)]
-        public static SqlInt64 XF_HashMurmur3_64(SqlBinary data)
+        private static SqlInt64 HashMurmur3_64(SqlBinary data)
         {
             const UInt64 c1 = 0x87c37b91114253d5ul;
             const UInt64 c2 = 0x4cf5ad432745937ful;
@@ -409,14 +417,22 @@ namespace SQLDataHashFunctions
             }
         }
 
+        private static SqlInt16 HashBucket_16(SqlBinary data, SqlInt16 numBuckets)
+        {           
+            SqlInt32 hashValue = HashMurmur3_32(data);
+            SqlInt16 bucketId = Math.Abs((Int16)(hashValue % (Int16)numBuckets.Value));
+            return (bucketId);
+        }
 
-	}
-
-	public static partial class xxHash3
-    {
-      
     }
 
+    public static partial class xxHash3
+    {
+        // WIP
+    }
 }
+
+
+
 
 
