@@ -26,14 +26,22 @@
     <AssemblyOwner>dbo</AssemblyOwner>
     <TargetFrameworkProfile />
     <PermissionSet>SAFE</PermissionSet>
-    <SignAssembly>False</SignAssembly>
-    <AssemblyOriginatorKeyFile>SqlHashFunction.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly>True</SignAssembly>
+    <AssemblyOriginatorKeyFile>SQLHashSignKey.crt.snk</AssemblyOriginatorKeyFile>
+    <Recovery>SIMPLE</Recovery>
+    <PageVerify>CHECKSUM</PageVerify>
+    <IsChangeTrackingAutoCleanupOn>True</IsChangeTrackingAutoCleanupOn>
+    <EnableFullTextSearch>False</EnableFullTextSearch>
+    <Trustworthy>True</Trustworthy>
+    <DefaultSchema>dbo</DefaultSchema>
+    <DacVersion>3.0.0.0</DacVersion>
+    <GenerateSqlClrSymbols>False</GenerateSqlClrSymbols>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>
     <BuildScriptName>$(MSBuildProjectName).sql</BuildScriptName>
     <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
-    <DebugType>pdbonly</DebugType>
+    <DebugType>none</DebugType>
     <Optimize>true</Optimize>
     <DefineDebug>false</DefineDebug>
     <DefineTrace>true</DefineTrace>
@@ -77,5 +85,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="SQLDataHashFunction.publish.xml" />
+    <None Include="SQLHashSignKey.crt.snk" />
   </ItemGroup>
 </Project>

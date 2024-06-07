@@ -2,7 +2,7 @@ using System;
 using System.Data.SqlTypes;
 using Microsoft.SqlServer.Server;
 
-// for xxHash
+
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -93,6 +93,7 @@ namespace SQLDataHashFunctions
         public static SqlInt64 XF_HashMurmur3_64(SqlBinary data) => HashMurmur3_64(data);
 
 
+        
         private static SqlInt32 HashMurmur2_32(SqlBinary data)
         {
 
