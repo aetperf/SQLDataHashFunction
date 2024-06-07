@@ -44,8 +44,7 @@ namespace SQLDataHashFunctions
 
         private static int HashFNV1a_32(SqlBinary bytes)
         {
-            uint hash = offset32;
-            //byte[] bytes = value.GetUnicodeBytes();
+            uint hash = offset32;            
             for (int i = 0; i < bytes.Length; i++)
             {
                 uint v = (hash ^ bytes[i]);
@@ -160,10 +159,6 @@ namespace SQLDataHashFunctions
         private static SqlInt64 HashMurmur2_64(SqlBinary data)
         {
 
-            //if (data.ToString().Length==0)
-            //{
-            //    return SqlInt64.Null;
-            //}
             const UInt64 m = 0xc6a4a7935bd1e995;
             const Int32 r = 47;
 
